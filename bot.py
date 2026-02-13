@@ -15,7 +15,6 @@ from aiogram.filters import CommandStart, Command
 # ================= CONFIG =================
 
 TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 CHANNELS = os.getenv("CHANNELS", "").split(",")
 
 bot = Bot(token=TOKEN)
@@ -43,10 +42,15 @@ CREATE TABLE IF NOT EXISTS settings (
 )
 """)
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS admin (
+    id INTEGER PRIMARY KEY
+)
+""")
+
 conn.commit()
 
 # ================= DATA =================
-# BU YERGA O'ZINGNI RO'YXATNI YOZASAN
 
 DATA = {
     "Matematika": {
@@ -60,6 +64,16 @@ DATA = {
 }
 
 # ================= FUNCTIONS =================
+
+def set_admin(user_id):
+    cursor.execute("DELETE FROM admin")
+    cursor.execute("INSERT INTO admin (id) VALUES (?)", (user_id,))
+    conn.commit()
+
+def get_admin():
+    cursor.execute("SELECT id FROM admin LIMIT 1")
+    row = cursor.fetchone()
+    return row[0] if row else None
 
 def start_voting():
     cursor.execute("DELETE FROM settings")
@@ -106,12 +120,12 @@ async def check_subscription(user_id):
             return False
     return True
 
-# ================= START =================
+# ================= COMMANDS =================
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
     if not await check_subscription(message.from_user.id):
-        await message.answer("❗ Iltimos 2 ta kanalga obuna bo‘ling va qayta /start bosing.")
+        await message.answer("❗ Iltimos kanallarga obuna bo‘ling va qayta /start bosing.")
         return
 
     kb = InlineKeyboardMarkup(
@@ -130,7 +144,27 @@ async def start_handler(message: Message):
 
     await message.answer("Fan tanlang:", reply_markup=kb)
 
-# ================= FAN =================
+@dp.message(Command("myid"))
+async def myid_handler(message: Message):
+    await message.answer(f"Sening ID: {message.from_user.id}")
+
+@dp.message(Command("start_voting"))
+async def start_voting_handler(message: Message):
+    admin = get_admin()
+
+    # Agar admin yo'q bo‘lsa birinchi yozgan admin bo‘ladi
+    if not admin:
+        set_admin(message.from_user.id)
+        admin = message.from_user.id
+
+    if message.from_user.id != admin:
+        await message.answer("❌ Siz admin emassiz.")
+        return
+
+    start_voting()
+    await message.answer("✅ Ovoz berish boshlandi (1 kun)")
+
+# ================= CALLBACKS =================
 
 @dp.callback_query(F.data.startswith("fan|"))
 async def fan_handler(call: CallbackQuery):
@@ -145,8 +179,6 @@ async def fan_handler(call: CallbackQuery):
 
     await call.message.edit_text("Sinf tanlang:", reply_markup=kb)
 
-# ================= SINF =================
-
 @dp.callback_query(F.data.startswith("sinf|"))
 async def sinf_handler(call: CallbackQuery):
     _, fan, sinf = call.data.split("|")
@@ -159,8 +191,6 @@ async def sinf_handler(call: CallbackQuery):
     )
 
     await call.message.edit_text("O‘quvchini tanlang:", reply_markup=kb)
-
-# ================= VOTE =================
 
 @dp.callback_query(F.data.startswith("vote|"))
 async def vote_handler(call: CallbackQuery):
@@ -187,8 +217,6 @@ async def vote_handler(call: CallbackQuery):
 
     await call.message.answer(text)
 
-# ================= RESULTS =================
-
 @dp.callback_query(F.data == "results")
 async def results_handler(call: CallbackQuery):
     text = "📊 NATIJALAR:\n"
@@ -196,27 +224,19 @@ async def results_handler(call: CallbackQuery):
     for fan in DATA:
         for sinf in DATA[fan]:
             text += f"\n🏫 {fan} ({sinf})\n"
-
             results = get_results(fan, sinf)
-            total_votes = sum(count for _, count in results)
 
             if not results:
                 text += "Ovozlar yo‘q.\n"
                 continue
+
+            total_votes = sum(count for _, count in results)
 
             for i, (s, count) in enumerate(results, 1):
                 percent = (count / total_votes) * 100 if total_votes > 0 else 0
                 text += f"{i}. {s} — {count} ta ({percent:.1f}%)\n"
 
     await call.message.answer(text)
-
-# ================= ADMIN =================
-
-@dp.message(Command("start_voting"))
-async def admin_start(message: Message):
-    if message.from_user.id == ADMIN_ID:
-        start_voting()
-        await message.answer("✅ Ovoz berish boshlandi (1 kun)")
 
 # ================= RUN =================
 
