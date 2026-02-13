@@ -90,35 +90,35 @@ def add_vote(user_id, fan, sinf, student):
     except:
         return False
 
-def get_results_text(fan, sinf):
-    results = get_results(fan, sinf)
-    total_votes = sum(count for _, count in results)
-
-    text = f"\n📊 {fan} ({sinf}) natijalari:\n"
-
-    if not results:
-        text += "Ovozlar yo‘q.\n"
-        return text
-
-    for i, (s, count) in enumerate(results, 1):
-        percent = (count / total_votes) * 100 if total_votes else 0
-        text += f"{i}. {s} — {count} ta ({percent:.1f}%)\n"
-
-    return text
-
 def get_results(fan, sinf):
     cursor.execute("""
     SELECT student, COUNT(*) FROM votes
     WHERE fan=? AND sinf=?
     GROUP BY student
-    ORDER BY COUNT(*) DESC
     """, (fan, sinf))
     return cursor.fetchall()
+
+def get_results_text(fan, sinf):
+    results = get_results(fan, sinf)
+    result_dict = {student: count for student, count in results}
+
+    total_votes = sum(result_dict.values())
+
+    text = f"\n📊 {fan} ({sinf}) natijalari:\n"
+
+    for i, student in enumerate(DATA[fan][sinf], 1):
+        count = result_dict.get(student, 0)
+        percent = (count / total_votes) * 100 if total_votes else 0
+        text += f"{i}. {student} — {count} ta ({percent:.1f}%)\n"
+
+    text += f"\n🗳 Jami ovoz: {total_votes}\n"
+
+    return text
 
 async def check_subscription(user_id):
     for channel in CHANNELS:
         channel = channel.strip()
-        if channel == "":
+        if not channel:
             continue
         try:
             member = await bot.get_chat_member(channel, user_id)
@@ -132,6 +132,7 @@ async def check_subscription(user_id):
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
+
     if not await check_subscription(message.from_user.id):
 
         buttons = []
@@ -140,10 +141,15 @@ async def start_handler(message: Message):
             channel = channel.strip()
             if channel:
                 buttons.append(
-                    [InlineKeyboardButton(text=f"Obuna bo‘lish", url=f"https://t.me/{channel.replace('@','')}")]
+                    [InlineKeyboardButton(
+                        text="📢 Kanalga obuna bo‘lish",
+                        url=f"https://t.me/{channel.replace('@','')}"
+                    )]
                 )
 
-        buttons.append([InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_sub")])
+        buttons.append([
+            InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_sub")
+        ])
 
         kb = InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -168,7 +174,9 @@ async def show_fans(message):
         inline_keyboard=[
             [InlineKeyboardButton(text=fan, callback_data=f"fan|{fan}")]
             for fan in DATA.keys()
-        ] + [[InlineKeyboardButton(text="📊 Natijalar", callback_data="results")]]
+        ] + [
+            [InlineKeyboardButton(text="📊 Natijalar", callback_data="results")]
+        ]
     )
 
     if not voting_active():
@@ -178,7 +186,7 @@ async def show_fans(message):
         )
         return
 
-    await message.answer("Fan tanlang:", reply_markup=kb)
+    await message.answer("📚 Fan tanlang:", reply_markup=kb)
 
 # ================= FAN =================
 
@@ -188,12 +196,15 @@ async def fan_handler(call: CallbackQuery):
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=sinf, callback_data=f"sinf|{fan}|{sinf}")]
+            [InlineKeyboardButton(
+                text=sinf,
+                callback_data=f"sinf|{fan}|{sinf}"
+            )]
             for sinf in DATA[fan].keys()
         ]
     )
 
-    await call.message.edit_text("Sinf tanlang:", reply_markup=kb)
+    await call.message.edit_text("🏫 Sinf tanlang:", reply_markup=kb)
 
 # ================= SINF =================
 
@@ -203,12 +214,15 @@ async def sinf_handler(call: CallbackQuery):
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=st, callback_data=f"vote|{fan}|{sinf}|{st}")]
-            for st in DATA[fan][sinf]
+            [InlineKeyboardButton(
+                text=student,
+                callback_data=f"vote|{fan}|{sinf}|{student}"
+            )]
+            for student in DATA[fan][sinf]
         ]
     )
 
-    await call.message.edit_text("O‘quvchini tanlang:", reply_markup=kb)
+    await call.message.edit_text("👨‍🎓 O‘quvchini tanlang:", reply_markup=kb)
 
 # ================= VOTE =================
 
@@ -231,14 +245,14 @@ async def vote_handler(call: CallbackQuery):
         return
 
     await call.message.answer(
-        "✅ Ovozingiz qabul qilindi!\n" + result_text
+        "✅ Ovozingiz muvaffaqiyatli qabul qilindi!\n" + result_text
     )
 
 # ================= RESULTS =================
 
 @dp.callback_query(F.data == "results")
 async def results_handler(call: CallbackQuery):
-    text = "📊 NATIJALAR:\n"
+    text = "📊 UMUMIY NATIJALAR:\n"
 
     for fan in DATA:
         for sinf in DATA[fan]:
