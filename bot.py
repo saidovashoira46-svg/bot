@@ -6,11 +6,14 @@ from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart
+from openpyxl import Workbook
+from openpyxl.styles import Font
 
 # ================= CONFIG =================
 
 TOKEN = os.getenv("BOT_TOKEN")
 CHANNELS = os.getenv("CHANNELS", "").split(",")
+ADMIN_ID = 6140962854
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -93,8 +96,7 @@ def get_remaining_time():
     minutes, seconds = divmod(int(remaining.total_seconds()), 60)
     return f"{minutes} minut {seconds} sekund"
 
-
-# ================= DATABASE =================
+# ================= DATABASE FUNCTIONS =================
 
 def add_vote(user_id, fan, sinf, student):
     try:
@@ -134,14 +136,44 @@ def get_results_text(fan, sinf):
 
     text = f"\n🏫 {sinf}:\n"
 
-    for i, student in enumerate(DATA[fan][sinf], 1):
+    for student in DATA[fan][sinf]:
         count = result_dict.get(student, 0)
         percent = (count / total_votes) * 100 if total_votes else 0
-        text += f"{i}. {student} — {count} ta ({percent:.1f}%)\n"
+        text += f"{student} — {count} ta ({percent:.1f}%)\n"
 
-    text += f"🗳 Jami ovoz: {total_votes}\n"
+    text += f"🗳 Jami: {total_votes}\n"
     return text
 
+# ================= EXCEL =================
+
+def generate_excel():
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    for fan in DATA:
+        ws = wb.create_sheet(title=fan)
+
+        ws.append(["Sinf", "O‘quvchi", "Ovoz", "Foiz (%)"])
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
+
+        for sinf in DATA[fan]:
+            results = get_results(fan, sinf)
+            result_dict = {student: count for student, count in results}
+            total = sum(result_dict.values())
+
+            for student in DATA[fan][sinf]:
+                count = result_dict.get(student, 0)
+                percent = (count / total * 100) if total else 0
+
+                ws.append([sinf, student, count, round(percent, 2)])
+
+        ws.append([])
+        ws.append(["Fan jami:", get_fan_total(fan)])
+
+    filename = "natijalar.xlsx"
+    wb.save(filename)
+    return filename
 
 # ================= SUBSCRIPTION =================
 
@@ -158,29 +190,13 @@ async def check_subscription(user_id):
             return False
     return True
 
-
 # ================= START =================
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
 
     if not await check_subscription(message.from_user.id):
-
-        buttons = []
-        for channel in CHANNELS:
-            channel = channel.strip()
-            if channel:
-                buttons.append(
-                    [InlineKeyboardButton(
-                        text="📢 Kanalga obuna bo‘lish",
-                        url=f"https://t.me/{channel.replace('@','')}"
-                    )]
-                )
-
-        buttons.append([InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_sub")])
-        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-
-        await message.answer("❗ Kanallarga obuna bo‘ling:", reply_markup=kb)
+        await message.answer("❗ Kanallarga obuna bo‘ling.")
         return
 
     start_time = get_start_time()
@@ -188,132 +204,39 @@ async def start_handler(message: Message):
     if not start_time:
         start_voting()
         remaining = get_remaining_time()
-        await message.answer(f"✅ Ovoz berish boshlandi!\n⏳ Qolgan vaqt: {remaining}")
+        await message.answer(f"✅ Ovoz berish boshlandi!\n⏳ {remaining}")
     else:
         if voting_active():
-            remaining = get_remaining_time()
-            await message.answer(f"ℹ️ Ovoz berish davom etmoqda.\n⏳ Qolgan vaqt: {remaining}")
+            await message.answer(f"⏳ Qolgan vaqt: {get_remaining_time()}")
         else:
             await message.answer("❌ Ovoz berish yakunlangan.")
 
     await show_menu(message)
 
-
 # ================= MENU =================
 
 async def show_menu(message):
-
     buttons = []
 
     if voting_active():
         for fan in DATA:
-            buttons.append(
-                [InlineKeyboardButton(text=fan, callback_data=f"fan|{fan}")]
-            )
+            buttons.append([InlineKeyboardButton(text=fan, callback_data=f"fan|{fan}")])
 
-    buttons.append(
-        [InlineKeyboardButton(text="📊 Natijalar", callback_data="results")]
-    )
+    buttons.append([InlineKeyboardButton(text="📊 Natijalar", callback_data="results")])
 
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await message.answer("Tanlang:", reply_markup=kb)
 
-    if voting_active():
-        await message.answer("📚 Fan tanlang:", reply_markup=kb)
-    else:
-        await message.answer("❌ Ovoz berish tugagan.\n📊 Natijalarni ko‘rishingiz mumkin:", reply_markup=kb)
+# ================= EXCEL COMMAND =================
 
-
-# ================= FAN =================
-
-@dp.callback_query(F.data.startswith("fan|"))
-async def fan_handler(call: CallbackQuery):
-    if not voting_active():
-        await call.answer("❌ Ovoz berish tugagan!", show_alert=True)
+@dp.message(F.text == "/excel")
+async def send_excel(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ Siz admin emassiz.")
         return
 
-    fan = call.data.split("|")[1]
-
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text=sinf, callback_data=f"sinf|{fan}|{sinf}")]
-            for sinf in DATA[fan]
-        ]
-    )
-
-    await call.message.edit_text("🏫 Sinf tanlang:", reply_markup=kb)
-
-
-# ================= SINF =================
-
-@dp.callback_query(F.data.startswith("sinf|"))
-async def sinf_handler(call: CallbackQuery):
-    _, fan, sinf = call.data.split("|")
-
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text=student, callback_data=f"vote|{fan}|{sinf}|{student}")]
-            for student in DATA[fan][sinf]
-        ]
-    )
-
-    await call.message.edit_text("👨‍🎓 O‘quvchini tanlang:", reply_markup=kb)
-
-
-# ================= VOTE =================
-
-@dp.callback_query(F.data.startswith("vote|"))
-async def vote_handler(call: CallbackQuery):
-    _, fan, sinf, student = call.data.split("|")
-
-    if not voting_active():
-        await call.message.answer("❌ Ovoz berish yakunlandi.")
-        return
-
-    success = add_vote(call.from_user.id, fan, sinf, student)
-    result_text = get_results_text(fan, sinf)
-
-    if not success:
-        await call.message.answer("❌ Siz allaqachon ovoz bergansiz!\n" + result_text)
-        return
-
-    await call.message.answer("✅ Ovozingiz qabul qilindi!\n" + result_text)
-
-
-# ================= RESULTS MENU =================
-
-@dp.callback_query(F.data == "results")
-async def results_menu(call: CallbackQuery):
-
-    total = get_total_votes_all()
-
-    buttons = [
-        [InlineKeyboardButton(text=fan, callback_data=f"show_result|{fan}")]
-        for fan in DATA
-    ]
-
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-
-    await call.message.answer(
-        f"📊 NATIJALAR BO‘LIMI\n\n🗳 Jami ovoz: {total}\n\nFanni tanlang:",
-        reply_markup=kb
-    )
-
-
-# ================= FAN RESULTS =================
-
-@dp.callback_query(F.data.startswith("show_result|"))
-async def show_fan_results(call: CallbackQuery):
-
-    fan = call.data.split("|")[1]
-    text = f"📊 {fan} natijalari:\n"
-
-    for sinf in DATA[fan]:
-        text += get_results_text(fan, sinf)
-
-    text += f"\n🗳 {fan} fanidan jami: {get_fan_total(fan)}"
-
-    await call.message.answer(text)
-
+    file = generate_excel()
+    await message.answer_document(file, caption="📊 Excel natijalar")
 
 # ================= RUN =================
 
