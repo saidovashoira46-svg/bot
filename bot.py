@@ -311,10 +311,20 @@ def get_results_text(fan, sinf):
 
     for student in DATA[fan][sinf]:
         name = student["name"]
+        filial = student.get("filial", "")
+        maktab = student.get("maktab")
+        sinf_num = student.get("sinf")
+
         count = result_dict.get(name, 0)
         percent = (count / total_votes) * 100 if total_votes else 0
 
-        text += f"{name} — {count} ta ({percent:.1f}%)\n"
+        # Agar maktab va sinf bor bo‘lsa
+        if maktab and sinf_num:
+            display = f"{name} ({filial}) {maktab}-m {sinf_num}-s"
+        else:
+            display = f"{name} ({filial})"
+
+        text += f"{display} — {count} ta ({percent:.1f}%)\n"
 
     text += f"🗳 Jami: {total_votes}\n"
     return text
