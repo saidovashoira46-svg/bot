@@ -90,6 +90,22 @@ def add_vote(user_id, fan, sinf, student):
     except:
         return False
 
+def get_results_text(fan, sinf):
+    results = get_results(fan, sinf)
+    total_votes = sum(count for _, count in results)
+
+    text = f"\n📊 {fan} ({sinf}) natijalari:\n"
+
+    if not results:
+        text += "Ovozlar yo‘q.\n"
+        return text
+
+    for i, (s, count) in enumerate(results, 1):
+        percent = (count / total_votes) * 100 if total_votes else 0
+        text += f"{i}. {s} — {count} ta ({percent:.1f}%)\n"
+
+    return text
+
 def get_results(fan, sinf):
     cursor.execute("""
     SELECT student, COUNT(*) FROM votes
@@ -117,11 +133,37 @@ async def check_subscription(user_id):
 @dp.message(CommandStart())
 async def start_handler(message: Message):
     if not await check_subscription(message.from_user.id):
+
+        buttons = []
+
+        for channel in CHANNELS:
+            channel = channel.strip()
+            if channel:
+                buttons.append(
+                    [InlineKeyboardButton(text=f"Obuna bo‘lish", url=f"https://t.me/{channel.replace('@','')}")]
+                )
+
+        buttons.append([InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_sub")])
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
         await message.answer(
-            "❗ Iltimos 2 ta kanalga obuna bo‘ling va qayta /start bosing."
+            "❗ Iltimos quyidagi 2 ta kanalga obuna bo‘ling:",
+            reply_markup=kb
         )
         return
 
+    await show_fans(message)
+
+@dp.callback_query(F.data == "check_sub")
+async def check_sub(call: CallbackQuery):
+    if await check_subscription(call.from_user.id):
+        await call.message.delete()
+        await show_fans(call.message)
+    else:
+        await call.answer("❌ Hali obuna bo‘lmagansiz!", show_alert=True)
+
+async def show_fans(message):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=fan, callback_data=f"fan|{fan}")]
@@ -180,20 +222,17 @@ async def vote_handler(call: CallbackQuery):
 
     success = add_vote(call.from_user.id, fan, sinf, student)
 
+    result_text = get_results_text(fan, sinf)
+
     if not success:
-        await call.message.answer("❌ Siz bu bo‘limda allaqachon ovoz bergansiz!")
+        await call.message.answer(
+            "❌ Siz allaqachon ovoz bergansiz!\n" + result_text
+        )
         return
 
-    results = get_results(fan, sinf)
-    total_votes = sum(count for _, count in results)
-
-    text = "✅ Ovozingiz qabul qilindi!\n\n📊 Joriy natijalar:\n"
-
-    for i, (s, count) in enumerate(results, 1):
-        percent = (count / total_votes) * 100 if total_votes else 0
-        text += f"{i}. {s} — {count} ta ({percent:.1f}%)\n"
-
-    await call.message.answer(text)
+    await call.message.answer(
+        "✅ Ovozingiz qabul qilindi!\n" + result_text
+    )
 
 # ================= RESULTS =================
 
@@ -203,17 +242,7 @@ async def results_handler(call: CallbackQuery):
 
     for fan in DATA:
         for sinf in DATA[fan]:
-            text += f"\n🏫 {fan} ({sinf})\n"
-            results = get_results(fan, sinf)
-            total_votes = sum(count for _, count in results)
-
-            if not results:
-                text += "Ovozlar yo‘q.\n"
-                continue
-
-            for i, (s, count) in enumerate(results, 1):
-                percent = (count / total_votes) * 100 if total_votes else 0
-                text += f"{i}. {s} — {count} ta ({percent:.1f}%)\n"
+            text += get_results_text(fan, sinf)
 
     await call.message.answer(text)
 
