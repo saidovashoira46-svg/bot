@@ -57,7 +57,10 @@ DATA = {
     }
 }
 
-# ================= VOTING FUNCTIONS =================
+# ================= VOTING TIME =================
+
+VOTING_DURATION_DAYS = 1
+
 
 def start_voting():
     cursor.execute("DELETE FROM settings")
@@ -67,23 +70,26 @@ def start_voting():
     )
     conn.commit()
 
+
 def get_start_time():
     cursor.execute("SELECT start_time FROM settings LIMIT 1")
     row = cursor.fetchone()
     return datetime.fromisoformat(row[0]) if row else None
 
+
 def voting_active():
     start = get_start_time()
     if not start:
         return False
-    return datetime.now() < start + timedelta(days=1)
+    return datetime.now() < start + timedelta(days=VOTING_DURATION_DAYS)
+
 
 def get_remaining_time():
     start = get_start_time()
     if not start:
         return None
 
-    end_time = start + timedelta(days=1)
+    end_time = start + timedelta(days=VOTING_DURATION_DAYS)
     remaining = end_time - datetime.now()
 
     if remaining.total_seconds() <= 0:
@@ -94,6 +100,7 @@ def get_remaining_time():
     minutes = remainder // 60
 
     return f"{days} kun {hours} soat {minutes} minut"
+
 
 # ================= DATABASE FUNCTIONS =================
 
@@ -108,6 +115,7 @@ def add_vote(user_id, fan, sinf, student):
     except:
         return False
 
+
 def get_results(fan, sinf):
     cursor.execute("""
     SELECT student, COUNT(*) FROM votes
@@ -116,18 +124,20 @@ def get_results(fan, sinf):
     """, (fan, sinf))
     return cursor.fetchall()
 
+
 def get_total_votes_all():
     cursor.execute("SELECT COUNT(*) FROM votes")
     return cursor.fetchone()[0]
+
 
 def get_fan_total(fan):
     cursor.execute("SELECT COUNT(*) FROM votes WHERE fan=?", (fan,))
     return cursor.fetchone()[0]
 
+
 def get_results_text(fan, sinf):
     results = get_results(fan, sinf)
     result_dict = {student: count for student, count in results}
-
     total_votes = sum(result_dict.values())
 
     text = f"\n🏫 {sinf}:\n"
@@ -137,7 +147,9 @@ def get_results_text(fan, sinf):
         percent = (count / total_votes) * 100 if total_votes else 0
         text += f"{i}. {student} — {count} ta ({percent:.1f}%)\n"
 
+    text += f"🗳 Jami ovoz: {total_votes}\n"
     return text
+
 
 # ================= SUBSCRIPTION =================
 
@@ -153,6 +165,7 @@ async def check_subscription(user_id):
         except:
             return False
     return True
+
 
 # ================= START =================
 
@@ -191,7 +204,6 @@ async def start_handler(message: Message):
     if not start_time:
         start_voting()
         remaining = get_remaining_time()
-
         await message.answer(
             f"✅ Ovoz berish boshlandi!\n\n⏳ Qolgan vaqt: {remaining}"
         )
@@ -202,11 +214,10 @@ async def start_handler(message: Message):
                 f"ℹ️ Ovoz berish allaqachon boshlangan.\n\n⏳ Qolgan vaqt: {remaining}"
             )
         else:
-            await message.answer(
-                "❌ Ovoz berish yakunlangan."
-            )
+            await message.answer("❌ Ovoz berish yakunlangan.")
 
-    await show_fans(message)
+    await show_menu(message)
+
 
 # ================= CHECK BUTTON =================
 
@@ -214,28 +225,46 @@ async def start_handler(message: Message):
 async def check_sub(call: CallbackQuery):
     if await check_subscription(call.from_user.id):
         await call.message.delete()
-        await show_fans(call.message)
+        await show_menu(call.message)
     else:
         await call.answer("❌ Hali obuna bo‘lmagansiz!", show_alert=True)
 
-# ================= FAN MENU =================
 
-async def show_fans(message):
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
+# ================= MAIN MENU =================
+
+async def show_menu(message):
+
+    if voting_active():
+        buttons = [
             [InlineKeyboardButton(text=fan, callback_data=f"fan|{fan}")]
             for fan in DATA.keys()
-        ] + [
-            [InlineKeyboardButton(text="📊 Natijalar", callback_data="results")]
         ]
+    else:
+        buttons = []
+
+    buttons.append(
+        [InlineKeyboardButton(text="📊 Natijalar", callback_data="results")]
     )
 
-    await message.answer("📚 Fan tanlang:", reply_markup=kb)
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    if voting_active():
+        await message.answer("📚 Fan tanlang:", reply_markup=kb)
+    else:
+        await message.answer(
+            "❌ Ovoz berish yakunlangan.\n📊 Natijalarni ko‘rishingiz mumkin:",
+            reply_markup=kb
+        )
+
 
 # ================= FAN =================
 
 @dp.callback_query(F.data.startswith("fan|"))
 async def fan_handler(call: CallbackQuery):
+    if not voting_active():
+        await call.answer("❌ Ovoz berish tugagan!", show_alert=True)
+        return
+
     fan = call.data.split("|")[1]
 
     kb = InlineKeyboardMarkup(
@@ -249,6 +278,7 @@ async def fan_handler(call: CallbackQuery):
     )
 
     await call.message.edit_text("🏫 Sinf tanlang:", reply_markup=kb)
+
 
 # ================= SINF =================
 
@@ -268,6 +298,7 @@ async def sinf_handler(call: CallbackQuery):
 
     await call.message.edit_text("👨‍🎓 O‘quvchini tanlang:", reply_markup=kb)
 
+
 # ================= VOTE =================
 
 @dp.callback_query(F.data.startswith("vote|"))
@@ -279,7 +310,6 @@ async def vote_handler(call: CallbackQuery):
         return
 
     success = add_vote(call.from_user.id, fan, sinf, student)
-
     result_text = get_results_text(fan, sinf)
 
     if not success:
@@ -289,13 +319,16 @@ async def vote_handler(call: CallbackQuery):
         return
 
     await call.message.answer(
-        "✅ Ovozingiz muvaffaqiyatli qabul qilindi!\n" + result_text
+        "✅ Ovozingiz qabul qilindi!\n" + result_text
     )
+
 
 # ================= RESULTS MENU =================
 
 @dp.callback_query(F.data == "results")
 async def results_menu(call: CallbackQuery):
+
+    total = get_total_votes_all()
 
     buttons = [
         [InlineKeyboardButton(text=fan, callback_data=f"show_result|{fan}")]
@@ -304,12 +337,11 @@ async def results_menu(call: CallbackQuery):
 
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
 
-    total = get_total_votes_all()
-
     await call.message.answer(
         f"📊 NATIJALAR BO‘LIMI\n\n🗳 Barcha fanlardan jami ovoz: {total}\n\nFanni tanlang:",
         reply_markup=kb
     )
+
 
 # ================= FAN RESULTS =================
 
@@ -324,10 +356,10 @@ async def show_fan_results(call: CallbackQuery):
         text += get_results_text(fan, sinf)
 
     fan_total = get_fan_total(fan)
-
     text += f"\n🗳 {fan} fanidan jami ovoz: {fan_total}"
 
     await call.message.answer(text)
+
 
 # ================= RUN =================
 
