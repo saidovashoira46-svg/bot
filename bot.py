@@ -378,8 +378,22 @@ async def sinf_handler(call: CallbackQuery):
     for student in DATA[fan][sinf]:
         name = student["name"]
         filial = student.get("filial", "")
+        maktab = student.get("maktab")
+        sinf_num = student.get("sinf")
 
-        display = f"{name} ({filial})"
+        # 👇 BARCHA HOLATLARNI QAMRAYDI
+        parts = [f"{name}"]
+
+        if filial:
+            parts.append(f"({filial})")
+
+        if maktab:
+            parts.append(f"{maktab}-m")
+
+        if sinf_num:
+            parts.append(f"{sinf_num}-s")
+
+        display = " ".join(parts)
 
         buttons.append(
             [InlineKeyboardButton(
@@ -388,10 +402,9 @@ async def sinf_handler(call: CallbackQuery):
             )]
         )
 
-    await call.message.edit_text(
-        "👨‍🎓 O‘quvchini tanlang:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
-    )
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    await call.message.edit_text("👨‍🎓 O‘quvchini tanlang:", reply_markup=kb)
 
 
 # ================= VOTE =================
