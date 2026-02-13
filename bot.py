@@ -521,17 +521,51 @@ async def vote_handler(call: CallbackQuery):
 async def results_handler(call: CallbackQuery):
     await call.answer()
 
-    text = "📊 NATIJALAR\n"
+    buttons = []
 
     for fan in DATA:
-        text += f"\n{fan}:\n"
-        for sinf in DATA[fan]:
-            text += get_results_text(fan, sinf)
+        buttons.append(
+            [InlineKeyboardButton(text=fan, callback_data=f"res_fan|{fan}")]
+        )
 
-    text += f"\n🗳 Umumiy ovoz: {get_total_votes_all()}"
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
 
-    await call.message.answer(text)
+    await call.message.edit_text("📊 Qaysi fan natijasi?", reply_markup=kb)
 
+
+@dp.callback_query(F.data.startswith("res_fan|"))
+async def results_fan_handler(call: CallbackQuery):
+    await call.answer()
+
+    fan = call.data.split("|")[1]
+
+    buttons = []
+
+    for sinf in DATA[fan]:
+        buttons.append(
+            [InlineKeyboardButton(
+                text=f"{sinf}",
+                callback_data=f"res_sinf|{fan}|{sinf}"
+            )]
+        )
+
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    await call.message.edit_text(
+        f"📊 {fan} fan natijalari\n\nSinf tanlang:",
+        reply_markup=kb
+    )
+
+@dp.callback_query(F.data.startswith("res_sinf|"))
+async def results_sinf_handler(call: CallbackQuery):
+    await call.answer()
+
+    _, fan, sinf = call.data.split("|")
+
+    text = f"📊 {fan} — {sinf} natijalari:\n"
+    text += get_results_text(fan, sinf)
+
+    await call.message.edit_text(text)
 
 # ================= EXCEL =================
 
@@ -555,3 +589,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
