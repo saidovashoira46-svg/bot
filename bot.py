@@ -4,7 +4,12 @@ import sqlite3
 from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 from aiogram.filters import CommandStart
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -55,7 +60,7 @@ DATA = {
     }
 }
 
-# ================= VOTING TIME =================
+# ================= VOTING SETTINGS =================
 
 VOTING_DURATION_MINUTES = 3
 
@@ -95,6 +100,7 @@ def get_remaining_time():
 
     minutes, seconds = divmod(int(remaining.total_seconds()), 60)
     return f"{minutes} minut {seconds} sekund"
+
 
 # ================= DATABASE FUNCTIONS =================
 
@@ -144,6 +150,7 @@ def get_results_text(fan, sinf):
     text += f"🗳 Jami: {total_votes}\n"
     return text
 
+
 # ================= EXCEL =================
 
 def generate_excel():
@@ -165,7 +172,6 @@ def generate_excel():
             for student in DATA[fan][sinf]:
                 count = result_dict.get(student, 0)
                 percent = (count / total * 100) if total else 0
-
                 ws.append([sinf, student, count, round(percent, 2)])
 
         ws.append([])
@@ -174,6 +180,7 @@ def generate_excel():
     filename = "natijalar.xlsx"
     wb.save(filename)
     return filename
+
 
 # ================= SUBSCRIPTION =================
 
@@ -190,21 +197,42 @@ async def check_subscription(user_id):
             return False
     return True
 
+
 # ================= START =================
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
 
     if not await check_subscription(message.from_user.id):
-        await message.answer("❗ Kanallarga obuna bo‘ling.")
+
+        buttons = []
+        for channel in CHANNELS:
+            channel = channel.strip()
+            if channel:
+                buttons.append(
+                    [InlineKeyboardButton(
+                        text="📢 Kanalga obuna bo‘lish",
+                        url=f"https://t.me/{channel.replace('@','')}"
+                    )]
+                )
+
+        buttons.append(
+            [InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_sub")]
+        )
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+        await message.answer(
+            "❗ Iltimos kanallarga obuna bo‘ling:",
+            reply_markup=kb
+        )
         return
 
     start_time = get_start_time()
 
     if not start_time:
         start_voting()
-        remaining = get_remaining_time()
-        await message.answer(f"✅ Ovoz berish boshlandi!\n⏳ {remaining}")
+        await message.answer(f"✅ Ovoz berish boshlandi!\n⏳ {get_remaining_time()}")
     else:
         if voting_active():
             await message.answer(f"⏳ Qolgan vaqt: {get_remaining_time()}")
@@ -213,6 +241,16 @@ async def start_handler(message: Message):
 
     await show_menu(message)
 
+
+@dp.callback_query(F.data == "check_sub")
+async def check_sub(call: CallbackQuery):
+    if await check_subscription(call.from_user.id):
+        await call.message.delete()
+        await show_menu(call.message)
+    else:
+        await call.answer("❌ Hali obuna bo‘lmagansiz!", show_alert=True)
+
+
 # ================= MENU =================
 
 async def show_menu(message):
@@ -220,14 +258,20 @@ async def show_menu(message):
 
     if voting_active():
         for fan in DATA:
-            buttons.append([InlineKeyboardButton(text=fan, callback_data=f"fan|{fan}")])
+            buttons.append(
+                [InlineKeyboardButton(text=fan, callback_data=f"fan|{fan}")]
+            )
 
-    buttons.append([InlineKeyboardButton(text="📊 Natijalar", callback_data="results")])
+    buttons.append(
+        [InlineKeyboardButton(text="📊 Natijalar", callback_data="results")]
+    )
 
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
     await message.answer("Tanlang:", reply_markup=kb)
 
-# ================= EXCEL COMMAND =================
+
+# ================= EXCEL =================
 
 @dp.message(F.text == "/excel")
 async def send_excel(message: Message):
@@ -237,6 +281,7 @@ async def send_excel(message: Message):
 
     file = generate_excel()
     await message.answer_document(file, caption="📊 Excel natijalar")
+
 
 # ================= RUN =================
 
