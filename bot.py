@@ -98,20 +98,26 @@ def get_results(fan, sinf):
     """, (fan, sinf))
     return cursor.fetchall()
 
+def get_total_votes_all():
+    cursor.execute("SELECT COUNT(*) FROM votes")
+    return cursor.fetchone()[0]
+
+def get_fan_total(fan):
+    cursor.execute("SELECT COUNT(*) FROM votes WHERE fan=?", (fan,))
+    return cursor.fetchone()[0]
+
 def get_results_text(fan, sinf):
     results = get_results(fan, sinf)
     result_dict = {student: count for student, count in results}
 
     total_votes = sum(result_dict.values())
 
-    text = f"\n📊 {fan} ({sinf}) natijalari:\n"
+    text = f"\n🏫 {sinf}:\n"
 
     for i, student in enumerate(DATA[fan][sinf], 1):
         count = result_dict.get(student, 0)
         percent = (count / total_votes) * 100 if total_votes else 0
         text += f"{i}. {student} — {count} ta ({percent:.1f}%)\n"
-
-    text += f"\n🗳 Jami ovoz: {total_votes}\n"
 
     return text
 
@@ -154,7 +160,7 @@ async def start_handler(message: Message):
         kb = InlineKeyboardMarkup(inline_keyboard=buttons)
 
         await message.answer(
-            "❗ Iltimos quyidagi 2 ta kanalga obuna bo‘ling:",
+            "❗ Iltimos quyidagi kanallarga obuna bo‘ling:",
             reply_markup=kb
         )
         return
@@ -178,13 +184,6 @@ async def show_fans(message):
             [InlineKeyboardButton(text="📊 Natijalar", callback_data="results")]
         ]
     )
-
-    if not voting_active():
-        await message.answer(
-            "❌ Ovoz berish yakunlandi.\n📊 Natijalarni ko‘rishingiz mumkin:",
-            reply_markup=kb
-        )
-        return
 
     await message.answer("📚 Fan tanlang:", reply_markup=kb)
 
@@ -245,18 +244,43 @@ async def vote_handler(call: CallbackQuery):
         return
 
     await call.message.answer(
-        "✅ Ovozingiz muvaffaqiyatli qabul qilindi!\n" + result_text
+        "✅ Ovozingiz qabul qilindi!\n" + result_text
     )
 
-# ================= RESULTS =================
+# ================= RESULTS MENU =================
 
 @dp.callback_query(F.data == "results")
-async def results_handler(call: CallbackQuery):
-    text = "📊 UMUMIY NATIJALAR:\n"
+async def results_menu(call: CallbackQuery):
 
-    for fan in DATA:
-        for sinf in DATA[fan]:
-            text += get_results_text(fan, sinf)
+    buttons = [
+        [InlineKeyboardButton(text=fan, callback_data=f"show_result|{fan}")]
+        for fan in DATA.keys()
+    ]
+
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    total = get_total_votes_all()
+
+    await call.message.answer(
+        f"📊 NATIJALAR BO‘LIMI\n\n🗳 Barcha fanlardan jami ovoz: {total}\n\nFanni tanlang:",
+        reply_markup=kb
+    )
+
+# ================= FAN RESULTS =================
+
+@dp.callback_query(F.data.startswith("show_result|"))
+async def show_fan_results(call: CallbackQuery):
+
+    fan = call.data.split("|")[1]
+
+    text = f"📊 {fan} fanidan natijalar:\n"
+
+    for sinf in DATA[fan]:
+        text += get_results_text(fan, sinf)
+
+    fan_total = get_fan_total(fan)
+
+    text += f"\n🗳 {fan} fanidan jami ovoz: {fan_total}"
 
     await call.message.answer(text)
 
