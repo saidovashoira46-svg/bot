@@ -98,7 +98,127 @@ DATA = {
             {"name": "TURSUNBOYEVA BAXTIGUL", "filial": "Mevazor", "maktab": 6, "sinf": 8},
         ]
     },
+    "ARAB TILI": {
+        "1-6 SINF": [
+            {"name": "XAMIDOV MUXAMMADYUSUF", "filial": "Kids 2", "maktab": 44, "sinf": 3},
+            {"name": "HURSANABODOVA MARJONA", "filial": "Dostobod", "maktab": 35, "sinf": 4},
+            {"name": "Murodjonova Oisha", "filial": "Kids 1"},
+            {"name": "Xadjayev Ziyovuddin", "filial": "Chinoz", "maktab": 26, "sinf": 2},
+            {"name": "Azimjonov Akbar", "filial": "Xalqabod", "maktab": 12, "sinf": 4},
+            {"name": "GAYRATOV SHAMSHOD", "filial": "Kasblar", "maktab": 5, "sinf": 4},
+            {"name": "NABIYEV XAMIDULLOH", "filial": "Niyazbosh", "maktab": 9, "sinf": 7},
+            {"name": "NURIMANOV JANDOS", "filial": "Mevazor", "maktab": 6, "sinf": 5},
+        ],
+        "7-11 SINF": [
+            {"name": "XAMIDOV ABDURAXMON", "filial": "Kids 2", "maktab": 45, "sinf": 7},
+            {"name": "USMONOVA DILORA", "filial": "Dostobod", "maktab": 10, "sinf": 7},
+            {"name": "Xatamova Jasmina", "filial": "Chinoz", "maktab": 9, "sinf": 8},
+            {"name": "Axmadjonova Ruxshona", "filial": "Xalqabod", "maktab": 55, "sinf": 11},
+            {"name": "NISHANOVA MALIKA", "filial": "Kasblar"},
+            {"name": "ERGASHBOYEVA ROBIYA", "filial": "Niyazbosh", "maktab": 27, "sinf": 9},
+        ]
+    },
+    "HAMSHIRA": {
+        "1-6 SINF": [
+            {"name": "MASHOKIROVA MADINA", "filial": "Kids 2"},
+            {"name": "BOXODIROVA MAXLIYO", "filial": "Olmazor", "maktab": 15, "sinf": 6},
+        ],
+        "7-11 SINF": [
+            {"name": "TOLIPOVA NIGORA", "filial": "Kids 2"},
+            {"name": "BERDENOVA TOLGONOY", "filial": "Dostobod", "maktab": 40, "sinf": 9},
+            {"name": "Muhlisa Komiljonova", "filial": "Chinoz", "maktab": 36, "sinf": 11},
+            {"name": "Xudoyqulova Xadicha", "filial": "Xalqabod", "maktab": 28, "sinf": 9},
+            {"name": "NORMUXAMMEDOVA NILUFAR", "filial": "Olmazor", "maktab": 5, "sinf": 11},
+            {"name": "TURSUNBOYEVA RAYXONA", "filial": "Kasblar", "maktab": 1, "sinf": 11},
+            {"name": "ASQARXO'JAYEVA SEVINCH", "filial": "Paxtazor", "maktab": 11, "sinf": 10},
+        ]
+    },
+    "IT": {
+
+    "1-6 SINF": [
+        {"name": "Ahmadjonov Mahmudjon", "filial": "Chinoz", "maktab": 26, "sinf": 7},
+        {"name": "Xolqo'ziyev Asadbek", "filial": "Xalqabod", "maktab": 28, "sinf": 6},
+        {"name": "DONYOROV MUXAMMADALI", "filial": "Olmazor", "sinf": 7},
+        {"name": "XAYTBOYEV OTABEK", "filial": "Gulbahor", "maktab": 1, "sinf": 9},
+        {"name": "RASULOV DAVRON", "filial": "Kasblar", "maktab": 10, "sinf": 6},
+    ],
+
+    "7-11 SINF": [
+        {"name": "Mengbayev Ma'mur", "filial": "Chinoz", "maktab": 8, "sinf": 11},
+        {"name": "Jalolov Mirasad", "filial": "Xalqabod", "maktab": 56, "sinf": 7},
+        {"name": "SULTONMURODOV BEXRUZ", "filial": "Olmazor", "maktab": 15, "sinf": 10},
+        {"name": "TO'LQINOVA MARJONA", "filial": "Gulbahor", "maktab": 48, "sinf": 8},
+        {"name": "JABBOROV JAVOXIR", "filial": "Kasblar", "maktab": 6, "sinf": 6},
+    ]
+    },
+    "KOMPYUTER": {
+        "1-6 SINF": [
+            {"name": "Izatullayev Sarvar", "filial": "Chinoz", "maktab": 40, "sinf": 5},
+            {"name": "Zulpiyev Otabek", "filial": "Olmazor", "maktab": 27, "sinf": 6},
+            {"name": "QURBONALIYEV MUSLIMBEK", "filial": "Kasblar", "maktab": 27, "sinf": 3},
+        ],
+
+        "7-11 SINF": [
+            {"name": "G'aniyev Kamron", "filial": "Chinoz", "maktab": 40, "sinf": 11},
+            {"name": "Abduraxmonova Sevinch", "filial": "Olmazor", "maktab": 9, "sinf": 10},
+            {"name": "NAVJABAYEVA NILUFAR", "filial": "Kasblar"},
+        ]
+    },
+    "MATEMATIKA": {
+        "1-6 SINF": [
+            {"name": "FAXRIDDINOV FARXOD", "filial": "Dostobod", "maktab": 11, "sinf": 5},
+            {"name": "Isroildjonova Zohida", "filial": "Chinoz", "maktab": 21, "sinf": 5},
+            {"name": "QURBONOVA DIANA", "filial": "Olmazor", "maktab": 5, "sinf": 5},
+            {"name": "ROZIMURODOVA SHAXNOZA", "filial": "Kasblar", "maktab": 9, "sinf": 3},
+            {"name": "SHAVKATOV ABRORJON", "filial": "Niyazbosh", "maktab": 16, "sinf": 4},
+        ],
+        "7-11 SINF": [
+            {"name": "RAXIMBERDIYEV FAZLIDDIN", "filial": "Dostobod", "maktab": 29, "sinf": 9},
+            {"name": "Eshmatov Muhammadrizo", "filial": "Chinoz", "maktab": 4, "sinf": 11},
+            {"name": "ABDUJALOLOV JALOLIDDIN", "filial": "Olmazor", "maktab": 17, "sinf": 8},
+            {"name": "MAXMUDJONOVA MUSHTARIY", "filial": "Kasblar", "maktab": 6, "sinf": 8},
+            {"name": "NIGMATULLAYEVA MUSLIMA", "filial": "Niyazbosh", "maktab": 27, "sinf": 7},
+            {"name": "ABDIXAFIZOV NURBOL", "filial": "Mevazor", "maktab": 36, "sinf": 7},
+        ]
+    },
+    "KOREYS TILI": {
+        "1-6 SINF": [
+            {"name": "DJORAYEVA FARIZA", "filial": "Olmazor", "maktab": 15, "sinf": 5},
+            {"name": "MAXKAMBOYEVA MADINA", "filial": "Niyazbosh", "maktab": 13, "sinf": 11},
+        ],
+        "7-11 SINF": [
+            {"name": "TOQIBOYEVA ZIYODA", "filial": "Dostobod", "maktab": 19, "sinf": 9},
+            {"name": "Bolyeva Charosxon", "filial": "Chinoz", "maktab": 38, "sinf": 8},
+            {"name": "TUREJANOVA AIDA", "filial": "Olmazor", "maktab": 42, "sinf": 11},
+            {"name": "NISHANBAYEVA LAYLO", "filial": "Kasblar"},
+            {"name": "ABDULLAYEVA ZARINA", "filial": "Paxtazor", "maktab": 33, "sinf": 10},
+            {"name": "ABDUSHAKIROVA YASMINA", "filial": "Niyazbosh", "maktab": 13, "sinf": 11},
+        ]
+    },
+    "MENTAL": {
+        "1-6 SINF": [
+            {"name": "QODIROV ULUG'BEK", "filial": "Kids 2", "maktab": 12, "sinf": 2},
+            {"name": "ISAYEV XUSAN", "filial": "Olmazor", "maktab": 5, "sinf": 2},
+        ],
+        "7-11 SINF": [
+            {"name": "XAMIDJONOV ABDURAXMON", "filial": "Kids 2", "maktab": 3, "sinf": 6},
+            {"name": "SIDDIQOVA INTIZOR", "filial": "Olmazor", "maktab": 10, "sinf": 1},
+        ]
+    },
+    "LOYIHA": {
+        "1-6 SINF": [
+            {"name": "Sheraliyev Ismoil", "filial": "Kids 1", "sinf": 1},
+            {"name": "Botirjonova Malika", "filial": "Kids 1", "sinf": 2},
+            {"name": "Artikaliyev Boburjon", "filial": "Kids 1", "sinf": 2},
+            {"name": "Nazarmatova Iymona", "filial": "Kids 1", "sinf": 3},
+            {"name": "Shahramboyeva Oisha", "filial": "Kids 1", "sinf": 3},
+            {"name": "Shuhratova Muslima", "filial": "Kids 1", "sinf": 4},
+            {"name": "Tursunaliyev Nodirbek", "filial": "Kids 1", "sinf": 4},
+        ],
+        "7-11 SINF": []
+    },
 }
+
 
 
 # ================= VOTING =================
