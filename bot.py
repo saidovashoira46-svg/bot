@@ -57,7 +57,7 @@ DATA = {
     }
 }
 
-# ================= FUNCTIONS =================
+# ================= VOTING FUNCTIONS =================
 
 def start_voting():
     cursor.execute("DELETE FROM settings")
@@ -75,9 +75,27 @@ def get_start_time():
 def voting_active():
     start = get_start_time()
     if not start:
-        start_voting()
-        return True
+        return False
     return datetime.now() < start + timedelta(days=1)
+
+def get_remaining_time():
+    start = get_start_time()
+    if not start:
+        return None
+
+    end_time = start + timedelta(days=1)
+    remaining = end_time - datetime.now()
+
+    if remaining.total_seconds() <= 0:
+        return None
+
+    days = remaining.days
+    hours, remainder = divmod(remaining.seconds, 3600)
+    minutes = remainder // 60
+
+    return f"{days} kun {hours} soat {minutes} minut"
+
+# ================= DATABASE FUNCTIONS =================
 
 def add_vote(user_id, fan, sinf, student):
     try:
@@ -121,6 +139,8 @@ def get_results_text(fan, sinf):
 
     return text
 
+# ================= SUBSCRIPTION =================
+
 async def check_subscription(user_id):
     for channel in CHANNELS:
         channel = channel.strip()
@@ -139,6 +159,7 @@ async def check_subscription(user_id):
 @dp.message(CommandStart())
 async def start_handler(message: Message):
 
+    # Kanal tekshirish
     if not await check_subscription(message.from_user.id):
 
         buttons = []
@@ -165,7 +186,29 @@ async def start_handler(message: Message):
         )
         return
 
+    start_time = get_start_time()
+
+    if not start_time:
+        start_voting()
+        remaining = get_remaining_time()
+
+        await message.answer(
+            f"✅ Ovoz berish boshlandi!\n\n⏳ Qolgan vaqt: {remaining}"
+        )
+    else:
+        if voting_active():
+            remaining = get_remaining_time()
+            await message.answer(
+                f"ℹ️ Ovoz berish allaqachon boshlangan.\n\n⏳ Qolgan vaqt: {remaining}"
+            )
+        else:
+            await message.answer(
+                "❌ Ovoz berish yakunlangan."
+            )
+
     await show_fans(message)
+
+# ================= CHECK BUTTON =================
 
 @dp.callback_query(F.data == "check_sub")
 async def check_sub(call: CallbackQuery):
@@ -174,6 +217,8 @@ async def check_sub(call: CallbackQuery):
         await show_fans(call.message)
     else:
         await call.answer("❌ Hali obuna bo‘lmagansiz!", show_alert=True)
+
+# ================= FAN MENU =================
 
 async def show_fans(message):
     kb = InlineKeyboardMarkup(
@@ -244,7 +289,7 @@ async def vote_handler(call: CallbackQuery):
         return
 
     await call.message.answer(
-        "✅ Ovozingiz qabul qilindi!\n" + result_text
+        "✅ Ovozingiz muvaffaqiyatli qabul qilindi!\n" + result_text
     )
 
 # ================= RESULTS MENU =================
