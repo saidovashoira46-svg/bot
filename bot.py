@@ -223,19 +223,22 @@ DATA = {
 
 # ================= VOTING =================
 
-VOTING_DURATION_HOURS = 24
+VOTING_DURATION_MINUTES = 3
 START_TIME = datetime.now()
 
 def voting_active():
-    return datetime.now() < START_TIME + timedelta(hours=VOTING_DURATION_HOURS)
+    return datetime.now() < START_TIME + timedelta(minutes=VOTING_DURATION_MINUTES)
 
 def get_remaining_time():
-    remaining = (START_TIME + timedelta(hours=VOTING_DURATION_HOURS)) - datetime.now()
+    remaining = (START_TIME + timedelta(minutes=VOTING_DURATION_MINUTES)) - datetime.now()
+    
     if remaining.total_seconds() <= 0:
-        return "0 soat"
-    hours = int(remaining.total_seconds() // 3600)
-    minutes = int((remaining.total_seconds() % 3600) // 60)
-    return f"{hours} soat {minutes} minut"
+        return "0 minut"
+
+    minutes = int(remaining.total_seconds() // 60)
+    seconds = int(remaining.total_seconds() % 60)
+
+    return f"{minutes} minut {seconds} sekund"
 
 
 
