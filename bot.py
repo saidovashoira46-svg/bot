@@ -24,6 +24,25 @@ dp = Dispatcher()
 
 # ================= DATABASE =================
 
+
+
+conn = sqlite3.connect("votes.db")
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS votes (
+    user_id INTEGER,
+    fan TEXT,
+    sinf TEXT,
+    student TEXT,
+    UNIQUE(user_id, fan, sinf)
+)
+""")
+
+conn.commit()
+
+# ================= DATA =================
+# !!! BU YERGA O'ZING DATA QO'YASAN !!!
 DATA = {
     "ENGLISH": {
         "1-6 SINF": [
@@ -200,25 +219,6 @@ DATA = {
         "7-11 SINF": []
     },
 }
-
-conn = sqlite3.connect("votes.db")
-cursor = conn.cursor()
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS votes (
-    user_id INTEGER,
-    fan TEXT,
-    sinf TEXT,
-    student TEXT,
-    UNIQUE(user_id, fan, sinf)
-)
-""")
-
-conn.commit()
-
-# ================= DATA =================
-# !!! BU YERGA O'ZING DATA QO'YASAN !!!
-DATA = {}
 
 # ================= VOTING =================
 
@@ -429,3 +429,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
