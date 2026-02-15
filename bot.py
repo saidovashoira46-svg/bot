@@ -266,6 +266,47 @@ def get_results(fan, sinf):
 def clear_votes():
     cursor.execute("DELETE FROM votes")
     conn.commit()
+    
+    # ================= EXCEL =================
+
+def generate_excel():
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    for fan in DATA:
+        ws = wb.create_sheet(title=fan)
+        ws.append(["Sinf", "O‘quvchi", "Filial", "Ovoz", "Foiz"])
+
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
+
+        for sinf in DATA[fan]:
+            results = get_results(fan, sinf)
+            result_dict = {student: count for student, count in results}
+            total = sum(result_dict.values())
+
+            for student in DATA[fan][sinf]:
+                name = student["name"]
+                filial = student.get("filial", "")
+                count = result_dict.get(name, 0)
+                percent = (count / total * 100) if total else 0
+
+                ws.append([sinf, name, filial, count, round(percent, 2)])
+
+    filename = "natijalar.xlsx"
+    wb.save(filename)
+    return filename
+
+
+@dp.message(Command("excel"))
+async def send_excel(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ Siz admin emassiz.")
+        return
+
+    filename = generate_excel()
+    await message.answer_document(FSInputFile(filename))
+
 
 # ================= RESULTS TEXT =================
 
@@ -457,6 +498,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
