@@ -24,24 +24,6 @@ dp = Dispatcher()
 
 # ================= DATABASE =================
 
-conn = sqlite3.connect("votes.db")
-cursor = conn.cursor()
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS votes (
-    user_id INTEGER,
-    fan TEXT,
-    sinf TEXT,
-    student TEXT,
-    UNIQUE(user_id, fan, sinf)
-)
-""")
-
-conn.commit()
-
-# ================= DATA (NAMUNA) =================
-# Qolgan fanlaringni shu formatda qo‘shib ketaverasan
-
 DATA = {
     "ENGLISH": {
         "1-6 SINF": [
@@ -219,7 +201,24 @@ DATA = {
     },
 }
 
+conn = sqlite3.connect("votes.db")
+cursor = conn.cursor()
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS votes (
+    user_id INTEGER,
+    fan TEXT,
+    sinf TEXT,
+    student TEXT,
+    UNIQUE(user_id, fan, sinf)
+)
+""")
+
+conn.commit()
+
+# ================= DATA =================
+# !!! BU YERGA O'ZING DATA QO'YASAN !!!
+DATA = {}
 
 # ================= VOTING =================
 
@@ -242,9 +241,6 @@ def get_remaining_time():
 
     return f"{days} kun {hours} soat {minutes} minut"
 
-
-
-
 # ================= DATABASE FUNCS =================
 
 def add_vote(user_id, fan, sinf, student):
@@ -258,16 +254,20 @@ def add_vote(user_id, fan, sinf, student):
     except:
         return False
 
-
 def get_results(fan, sinf):
     cursor.execute("""
-        SELECT student, COUNT(*) 
-        FROM votes 
-        WHERE fan=? AND sinf=? 
+        SELECT student, COUNT(*)
+        FROM votes
+        WHERE fan=? AND sinf=?
         GROUP BY student
     """, (fan, sinf))
     return cursor.fetchall()
 
+def clear_votes():
+    cursor.execute("DELETE FROM votes")
+    conn.commit()
+
+# ================= RESULTS TEXT =================
 
 def get_results_text(fan, sinf):
     results = get_results(fan, sinf)
@@ -279,7 +279,6 @@ def get_results_text(fan, sinf):
     for student in DATA[fan][sinf]:
         name = student["name"]
         filial = student.get("filial", "")
-
         count = result_dict.get(name, 0)
         percent = (count / total * 100) if total else 0
 
@@ -287,51 +286,6 @@ def get_results_text(fan, sinf):
 
     text += f"\n🗳 Jami: {total}\n"
     return text
-
-
-# ================= EXCEL =================
-
-def generate_excel():
-    wb = Workbook()
-    wb.remove(wb.active)
-
-    for fan in DATA:
-        ws = wb.create_sheet(title=fan)
-        ws.append(["Sinf", "O‘quvchi", "Filial", "Ovoz", "Foiz"])
-
-        for cell in ws[1]:
-            cell.font = Font(bold=True)
-
-        for sinf in DATA[fan]:
-            results = get_results(fan, sinf)
-            result_dict = {student: count for student, count in results}
-            total = sum(result_dict.values())
-
-            for student in DATA[fan][sinf]:
-                name = student["name"]
-                filial = student.get("filial", "")
-
-                count = result_dict.get(name, 0)
-                percent = (count / total * 100) if total else 0
-
-                ws.append([sinf, name, filial, count, round(percent, 2)])
-
-    filename = "natijalar.xlsx"
-    wb.save(filename)
-    return filename
-
-
-# ================= START =================
-
-@dp.message(CommandStart())
-async def start_handler(message: Message):
-    if voting_active():
-        await message.answer(f"⏳ Qolgan vaqt: {get_remaining_time()}")
-    else:
-        await message.answer("❌ Ovoz berish tugagan.")
-
-    await show_menu(message)
-
 
 # ================= MENU =================
 
@@ -353,6 +307,44 @@ async def show_menu(message):
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
     )
 
+# ================= COMMANDS =================
+
+@dp.message(CommandStart())
+async def start_handler(message: Message):
+    if voting_active():
+        await message.answer(f"⏳ Qolgan vaqt: {get_remaining_time()}")
+    else:
+        await message.answer("❌ Ovoz berish tugagan.")
+
+    await show_menu(message)
+
+
+@dp.message(Command("restart"))
+async def restart_handler(message: Message):
+    await message.answer("🔄 Bot qayta boshlandi.")
+    await show_menu(message)
+
+
+@dp.message(Command("reset_time"))
+async def reset_time(message: Message):
+    global START_TIME
+
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ Siz admin emassiz.")
+        return
+
+    START_TIME = datetime.now()
+    await message.answer("✅ Voting vaqti qayta boshlandi!")
+
+
+@dp.message(Command("clear_votes"))
+async def clear_votes_handler(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ Siz admin emassiz.")
+        return
+
+    clear_votes()
+    await message.answer("🗑 Barcha ovozlar o‘chirildi!")
 
 # ================= FAN =================
 
@@ -371,48 +363,28 @@ async def fan_handler(call: CallbackQuery):
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
     )
 
-
 # ================= SINF =================
 
 @dp.callback_query(F.data.startswith("sinf|"))
 async def sinf_handler(call: CallbackQuery):
     await call.answer()
-
     _, fan, sinf = call.data.split("|")
 
     buttons = []
 
     for student in DATA[fan][sinf]:
         name = student["name"]
-        filial = student.get("filial", "")
-        maktab = student.get("maktab")
-        sinf_num = student.get("sinf")
-
-        # 👇 BARCHA HOLATLARNI QAMRAYDI
-        parts = [f"{name}"]
-
-        if filial:
-            parts.append(f"({filial})")
-
-        if maktab:
-            parts.append(f"{maktab}-m")
-
-        if sinf_num:
-            parts.append(f"{sinf_num}-s")
-
-        display = " ".join(parts)
-
         buttons.append(
             [InlineKeyboardButton(
-                text=display,
+                text=name,
                 callback_data=f"vote|{fan}|{sinf}|{name}"
             )]
         )
 
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-
-    await call.message.edit_text("👨‍🎓 O‘quvchini tanlang:", reply_markup=kb)
-
+    await call.message.edit_text(
+        "👨‍🎓 O‘quvchini tanlang:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
 
 # ================= VOTE =================
 
@@ -433,8 +405,6 @@ async def vote_handler(call: CallbackQuery):
         return
 
     await call.message.answer("✅ Ovozingiz qabul qilindi!")
-    await call.message.answer(get_results_text(fan, sinf))
-
 
 # ================= RESULTS =================
 
@@ -452,48 +422,10 @@ async def results_handler(call: CallbackQuery):
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
     )
 
-
-@dp.callback_query(F.data.startswith("resfan|"))
-async def results_fan(call: CallbackQuery):
-    await call.answer()
-    fan = call.data.split("|")[1]
-
-    buttons = [
-        [InlineKeyboardButton(text=sinf, callback_data=f"ressinf|{fan}|{sinf}")]
-        for sinf in DATA[fan]
-    ]
-
-    await call.message.edit_text(
-        f"📊 {fan}\nSinf tanlang:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
-    )
-
-
-@dp.callback_query(F.data.startswith("ressinf|"))
-async def results_sinf(call: CallbackQuery):
-    await call.answer()
-    _, fan, sinf = call.data.split("|")
-
-    await call.message.edit_text(get_results_text(fan, sinf))
-
-
-# ================= EXCEL =================
-
-@dp.message(Command("excel"))
-async def send_excel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.answer("❌ Siz admin emassiz.")
-        return
-
-    filename = generate_excel()
-    await message.answer_document(FSInputFile(filename))
-
-
 # ================= RUN =================
 
 async def main():
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
