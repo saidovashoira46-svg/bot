@@ -287,6 +287,30 @@ def get_results_text(fan, sinf):
     text += f"\n🗳 Jami: {total}\n"
     return text
 
+@dp.callback_query(F.data.startswith("resfan|"))
+async def results_fan(call: CallbackQuery):
+    await call.answer()
+    fan = call.data.split("|")[1]
+
+    buttons = [
+        [InlineKeyboardButton(text=sinf, callback_data=f"ressinf|{fan}|{sinf}")]
+        for sinf in DATA[fan]
+    ]
+
+    await call.message.edit_text(
+        f"📊 {fan}\nSinf tanlang:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
+
+
+@dp.callback_query(F.data.startswith("ressinf|"))
+async def results_sinf(call: CallbackQuery):
+    await call.answer()
+    _, fan, sinf = call.data.split("|")
+
+    await call.message.edit_text(get_results_text(fan, sinf))
+
+
 # ================= MENU =================
 
 async def show_menu(message):
@@ -433,5 +457,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
