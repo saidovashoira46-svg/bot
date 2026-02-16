@@ -19,12 +19,18 @@ from openpyxl.styles import Font
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "6140962854"))
 
+# 🔴 KANALINGNI SHU YERGA YOZ
+# 🔴 2 TA KANAL
+CHANNELS = [
+    "@alaziz_academy",
+    "@abdulaziz_avazovichY"
+]
+
+
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # ================= DATABASE =================
-
-
 
 conn = sqlite3.connect("votes.db")
 cursor = conn.cursor()
@@ -38,11 +44,43 @@ CREATE TABLE IF NOT EXISTS votes (
     UNIQUE(user_id, fan, sinf)
 )
 """)
-
 conn.commit()
 
+# ================= SUBSCRIPTION CHECK =================
+
+async def check_subscription(user_id):
+    for channel in CHANNELS:
+        try:
+            member = await bot.get_chat_member(channel, user_id)
+            if member.status in ["left", "kicked"]:
+                return False
+        except:
+            return False
+    return True
+
+async def force_subscribe(message_or_call):
+    buttons = []
+
+    for ch in CHANNELS:
+        buttons.append([
+            InlineKeyboardButton(
+                text="📢 Kanalga obuna bo‘lish",
+                url=f"https://t.me/{ch.replace('@','')}"
+            )
+        ])
+
+    buttons.append([
+        InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_sub")
+    ])
+
+    await message_or_call.answer(
+        "❗ Botdan foydalanish uchun kanalga obuna bo‘ling:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
+
 # ================= DATA =================
-# !!! BU YERGA O'ZING DATA QO'YASAN !!!
+
+
 DATA = {
     "ENGLISH": {
         "1-6 SINF": [
@@ -220,6 +258,7 @@ DATA = {
     },
 }
 
+
 # ================= VOTING =================
 
 VOTING_DURATION_DAYS = 7
@@ -263,95 +302,6 @@ def get_results(fan, sinf):
     """, (fan, sinf))
     return cursor.fetchall()
 
-def clear_votes():
-    cursor.execute("DELETE FROM votes")
-    conn.commit()
-    
-    # ================= EXCEL =================
-
-def generate_excel():
-    wb = Workbook()
-    wb.remove(wb.active)
-
-    for fan in DATA:
-        ws = wb.create_sheet(title=fan)
-        ws.append(["Sinf", "O‘quvchi", "Filial", "Ovoz", "Foiz"])
-
-        for cell in ws[1]:
-            cell.font = Font(bold=True)
-
-        for sinf in DATA[fan]:
-            results = get_results(fan, sinf)
-            result_dict = {student: count for student, count in results}
-            total = sum(result_dict.values())
-
-            for student in DATA[fan][sinf]:
-                name = student["name"]
-                filial = student.get("filial", "")
-                count = result_dict.get(name, 0)
-                percent = (count / total * 100) if total else 0
-
-                ws.append([sinf, name, filial, count, round(percent, 2)])
-
-    filename = "natijalar.xlsx"
-    wb.save(filename)
-    return filename
-
-
-@dp.message(Command("excel"))
-async def send_excel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.answer("❌ Siz admin emassiz.")
-        return
-
-    filename = generate_excel()
-    await message.answer_document(FSInputFile(filename))
-
-
-# ================= RESULTS TEXT =================
-
-def get_results_text(fan, sinf):
-    results = get_results(fan, sinf)
-    result_dict = {student: count for student, count in results}
-    total = sum(result_dict.values())
-
-    text = f"\n📊 {fan} — {sinf}\n\n"
-
-    for student in DATA[fan][sinf]:
-        name = student["name"]
-        filial = student.get("filial", "")
-        count = result_dict.get(name, 0)
-        percent = (count / total * 100) if total else 0
-
-        text += f"{name} ({filial}) — {count} ta ({percent:.1f}%)\n"
-
-    text += f"\n🗳 Jami: {total}\n"
-    return text
-
-@dp.callback_query(F.data.startswith("resfan|"))
-async def results_fan(call: CallbackQuery):
-    await call.answer()
-    fan = call.data.split("|")[1]
-
-    buttons = [
-        [InlineKeyboardButton(text=sinf, callback_data=f"ressinf|{fan}|{sinf}")]
-        for sinf in DATA[fan]
-    ]
-
-    await call.message.edit_text(
-        f"📊 {fan}\nSinf tanlang:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
-    )
-
-
-@dp.callback_query(F.data.startswith("ressinf|"))
-async def results_sinf(call: CallbackQuery):
-    await call.answer()
-    _, fan, sinf = call.data.split("|")
-
-    await call.message.edit_text(get_results_text(fan, sinf))
-
-
 # ================= MENU =================
 
 async def show_menu(message):
@@ -372,10 +322,17 @@ async def show_menu(message):
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
     )
 
-# ================= COMMANDS =================
+# ================= START =================
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
+
+    subscribed = await check_subscription(message.from_user.id)
+
+    if not subscribed:
+        await force_subscribe(message)
+        return
+
     if voting_active():
         await message.answer(f"⏳ Qolgan vaqt: {get_remaining_time()}")
     else:
@@ -383,39 +340,31 @@ async def start_handler(message: Message):
 
     await show_menu(message)
 
+# ================= CHECK BUTTON =================
 
-@dp.message(Command("restart"))
-async def restart_handler(message: Message):
-    await message.answer("🔄 Bot qayta boshlandi.")
-    await show_menu(message)
+@dp.callback_query(F.data == "check_sub")
+async def check_sub_handler(call: CallbackQuery):
+    await call.answer()
 
+    subscribed = await check_subscription(call.from_user.id)
 
-@dp.message(Command("reset_time"))
-async def reset_time(message: Message):
-    global START_TIME
-
-    if message.from_user.id != ADMIN_ID:
-        await message.answer("❌ Siz admin emassiz.")
+    if not subscribed:
+        await call.message.answer("❌ Hali ham obuna bo‘lmagansiz.")
         return
 
-    START_TIME = datetime.now()
-    await message.answer("✅ Voting vaqti qayta boshlandi!")
-
-
-@dp.message(Command("clear_votes"))
-async def clear_votes_handler(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.answer("❌ Siz admin emassiz.")
-        return
-
-    clear_votes()
-    await message.answer("🗑 Barcha ovozlar o‘chirildi!")
+    await call.message.answer("✅ Obuna tasdiqlandi!")
+    await show_menu(call.message)
 
 # ================= FAN =================
 
 @dp.callback_query(F.data.startswith("fan|"))
 async def fan_handler(call: CallbackQuery):
     await call.answer()
+
+    if not await check_subscription(call.from_user.id):
+        await force_subscribe(call.message)
+        return
+
     fan = call.data.split("|")[1]
 
     buttons = [
@@ -433,16 +382,20 @@ async def fan_handler(call: CallbackQuery):
 @dp.callback_query(F.data.startswith("sinf|"))
 async def sinf_handler(call: CallbackQuery):
     await call.answer()
+
+    if not await check_subscription(call.from_user.id):
+        await force_subscribe(call.message)
+        return
+
     _, fan, sinf = call.data.split("|")
 
     buttons = []
 
     for student in DATA[fan][sinf]:
-        name = student["name"]
         buttons.append(
             [InlineKeyboardButton(
-                text=name,
-                callback_data=f"vote|{fan}|{sinf}|{name}"
+                text=student["name"],
+                callback_data=f"vote|{fan}|{sinf}|{student['name']}"
             )]
         )
 
@@ -457,39 +410,23 @@ async def sinf_handler(call: CallbackQuery):
 async def vote_handler(call: CallbackQuery):
     await call.answer()
 
+    if not await check_subscription(call.from_user.id):
+        await force_subscribe(call.message)
+        return
+
     _, fan, sinf, student = call.data.split("|")
 
     if not voting_active():
         await call.message.answer("❌ Ovoz berish tugagan.")
-        await call.message.answer(get_results_text(fan, sinf))
         return
 
     success = add_vote(call.from_user.id, fan, sinf, student)
 
     if not success:
         await call.message.answer("❌ Siz allaqachon ovoz bergansiz!")
-        await call.message.answer(get_results_text(fan, sinf))
         return
 
     await call.message.answer("✅ Ovozingiz qabul qilindi!")
-    await call.message.answer(get_results_text(fan, sinf))
-
-
-# ================= RESULTS =================
-
-@dp.callback_query(F.data == "results")
-async def results_handler(call: CallbackQuery):
-    await call.answer()
-
-    buttons = [
-        [InlineKeyboardButton(text=fan, callback_data=f"resfan|{fan}")]
-        for fan in DATA
-    ]
-
-    await call.message.edit_text(
-        "📊 Qaysi fan?",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
-    )
 
 # ================= RUN =================
 
@@ -498,7 +435,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
-
