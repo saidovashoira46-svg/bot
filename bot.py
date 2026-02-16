@@ -303,6 +303,59 @@ def get_results(fan, sinf):
     return cursor.fetchall()
 
 # ================= MENU =================
+def get_results_text(fan, sinf):
+    results = get_results(fan, sinf)
+    result_dict = {student: count for student, count in results}
+    total = sum(result_dict.values())
+
+    text = f"\n📊 {fan} — {sinf}\n\n"
+
+    for student in DATA[fan][sinf]:
+        name = student["name"]
+        filial = student.get("filial", "")
+        count = result_dict.get(name, 0)
+        percent = (count / total * 100) if total else 0
+
+        text += f"{name} ({filial}) — {count} ta ({percent:.1f}%)\n"
+
+    text += f"\n🗳 Jami ovoz: {total}\n"
+    return text
+
+@dp.callback_query(F.data == "results")
+async def results_handler(call: CallbackQuery):
+    await call.answer()
+
+    buttons = [
+        [InlineKeyboardButton(text=fan, callback_data=f"resfan|{fan}")]
+        for fan in DATA
+    ]
+
+    await call.message.edit_text(
+        "📊 Qaysi fan natijasini ko‘rmoqchisiz?",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
+@dp.callback_query(F.data.startswith("resfan|"))
+async def results_fan(call: CallbackQuery):
+    await call.answer()
+    fan = call.data.split("|")[1]
+
+    buttons = [
+        [InlineKeyboardButton(text=sinf, callback_data=f"ressinf|{fan}|{sinf}")]
+        for sinf in DATA[fan]
+    ]
+
+    await call.message.edit_text(
+        f"📊 {fan}\nSinf tanlang:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
+
+@dp.callback_query(F.data.startswith("ressinf|"))
+async def results_sinf(call: CallbackQuery):
+    await call.answer()
+
+    _, fan, sinf = call.data.split("|")
+
+    await call.message.edit_text(get_results_text(fan, sinf))
 
 async def show_menu(message):
     buttons = []
