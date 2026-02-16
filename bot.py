@@ -498,12 +498,25 @@ async def sinf_handler(call: CallbackQuery):
     buttons = []
 
     for student in DATA[fan][sinf]:
+        name = student["name"]
+        filial = student.get("filial", "")
+        maktab = student.get("maktab", None)
+
+        text = f"{name}"
+
+        if filial:
+            text += f" ({filial})"
+
+        if maktab:
+            text += f" {maktab}-m"
+
         buttons.append(
             [InlineKeyboardButton(
-                text=student["name"],
-                callback_data=f"vote|{fan}|{sinf}|{student['name']}"
+                text=text,
+                callback_data=f"vote|{fan}|{sinf}|{name}"
             )]
         )
+
 
     await call.message.edit_text(
         "👨‍🎓 O‘quvchini tanlang:",
