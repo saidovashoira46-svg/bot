@@ -268,17 +268,18 @@ START_TIME = datetime.now()
 def voting_active():
     return datetime.now() < START_TIME + timedelta(minutes=VOTING_DURATION_MINUTES)
 
+
 def get_remaining_time():
     end_time = START_TIME + timedelta(minutes=VOTING_DURATION_MINUTES)
     remaining = end_time - datetime.now()
 
     if remaining.total_seconds() <= 0:
-        return "0 minut"
+        return "0:00"
 
-    minutes = remaining.seconds // 60
-    seconds = remaining.seconds % 60
+    minutes = int(remaining.total_seconds() // 60)
+    seconds = int(remaining.total_seconds() % 60)
 
-    return f"{minutes} minut {seconds} sekund"
+    return f"{minutes}:{seconds:02d}"
 
 
 # ================= DATABASE FUNCS =================
@@ -540,4 +541,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
