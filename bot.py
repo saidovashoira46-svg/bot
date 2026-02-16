@@ -260,26 +260,26 @@ DATA = {
 
 
 # ================= VOTING =================
+# ================= VOTING =================
 
-VOTING_DURATION_MINUTES = 3
+VOTING_DURATION_DAYS = 7
 START_TIME = datetime.now()
-
+END_TIME = START_TIME + timedelta(days=VOTING_DURATION_DAYS)
 
 def voting_active():
-    return datetime.now() < START_TIME + timedelta(minutes=VOTING_DURATION_MINUTES)
-
+    return datetime.now() < END_TIME
 
 def get_remaining_time():
-    end_time = START_TIME + timedelta(minutes=VOTING_DURATION_MINUTES)
-    remaining = end_time - datetime.now()
+    remaining = END_TIME - datetime.now()
 
     if remaining.total_seconds() <= 0:
-        return "0:00"
+        return "0 kun 0 soat 0 minut"
 
-    minutes = int(remaining.total_seconds() // 60)
-    seconds = int(remaining.total_seconds() % 60)
+    days = remaining.days
+    hours = remaining.seconds // 3600
+    minutes = (remaining.seconds % 3600) // 60
 
-    return f"{minutes}:{seconds:02d}"
+    return f"{days} kun {hours} soat {minutes} minut"
 
 
 # ================= DATABASE FUNCS =================
