@@ -542,10 +542,19 @@ async def vote_handler(call: CallbackQuery):
     success = add_vote(call.from_user.id, fan, sinf, student)
 
     if not success:
-        await call.message.answer("❌ Siz allaqachon ovoz bergansiz!")
+        # Allaqachon ovoz bergan bo‘lsa ham natijani ko‘rsatadi
+        text = "❌ Siz allaqachon ovoz bergansiz!\n"
+        text += get_results_text(fan, sinf)
+
+        await call.message.answer(text)
         return
 
-    await call.message.answer("✅ Ovozingiz qabul qilindi!")
+    # Yangi ovoz qabul qilindi
+    text = "✅ Ovozingiz qabul qilindi!\n"
+    text += get_results_text(fan, sinf)
+
+    await call.message.answer(text)
+
 
 # ================= RUN =================
 
@@ -554,3 +563,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
