@@ -261,24 +261,25 @@ DATA = {
 
 # ================= VOTING =================
 
-VOTING_DURATION_DAYS = 7
+VOTING_DURATION_MINUTES = 3
 START_TIME = datetime.now()
 
+
 def voting_active():
-    return datetime.now() < START_TIME + timedelta(days=VOTING_DURATION_DAYS)
+    return datetime.now() < START_TIME + timedelta(minutes=VOTING_DURATION_MINUTES)
 
 def get_remaining_time():
-    end_time = START_TIME + timedelta(days=VOTING_DURATION_DAYS)
+    end_time = START_TIME + timedelta(minutes=VOTING_DURATION_MINUTES)
     remaining = end_time - datetime.now()
 
     if remaining.total_seconds() <= 0:
-        return "0 kun"
+        return "0 minut"
 
-    days = remaining.days
-    hours = remaining.seconds // 3600
-    minutes = (remaining.seconds % 3600) // 60
+    minutes = remaining.seconds // 60
+    seconds = remaining.seconds % 60
 
-    return f"{days} kun {hours} soat {minutes} minut"
+    return f"{minutes} minut {seconds} sekund"
+
 
 # ================= DATABASE FUNCS =================
 
@@ -539,3 +540,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
